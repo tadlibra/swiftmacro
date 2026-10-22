@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile check
+        run: python -m compileall -q swift swiftmacro.py
+      - name: Import smoke test
+        run: python -c "import swift.config, swift.macro_engine, swift.auto_engine; print('OK', swift.config.APP_NAME, swift.config.APP_VERSION)"

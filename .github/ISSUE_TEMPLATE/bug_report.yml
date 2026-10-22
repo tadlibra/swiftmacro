@@ -1,0 +1,30 @@
+name: Báo lỗi
+description: Mô tả lỗi để được khắc phục
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Bước tái hiện
+      placeholder: "1. Mở app ... 2. Nhấn F9 ... 3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Hành vi mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Hành vi thực tế
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Môi trường (Windows + phiên bản app)
+      placeholder: "VD: Windows 11, SwiftMacro 2.0 (chạy EXE)"
+    validations:
+      required: true
