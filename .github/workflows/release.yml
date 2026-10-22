@@ -27,7 +27,7 @@ jobs:
           name: SwiftMacro-win64
           path: dist/SwiftMacro/
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/SwiftMacro/SwiftMacro.exe
           generate_release_notes: true
