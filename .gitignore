@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+
+# PyInstaller
+build/
+dist/
+
+# Test / coverage / logs
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Editors
+.vscode/
+.idea/

@@ -1,0 +1,17 @@
+name: Đề xuất tính năng
+description: Gợi ý cải tiến cho SwiftMacro
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Vấn đề đang gặp
+      placeholder: "Khi ... tôi phải ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Đề xuất
+    validations:
+      required: true
