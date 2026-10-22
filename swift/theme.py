@@ -1,7 +1,12 @@
 """Pixel theme: palette, bitmap glyphs, icon/grass factories, pixel widgets."""
 
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
+
+from PIL import Image, ImageTk
+
+UI_ASSET_DIR = Path(__file__).resolve().parents[1] / "assets" / "ui"
 
 THEME = {
     "bg": "#A9DC76",      # grass ground
@@ -90,6 +95,90 @@ GLYPHS = {
         ".#...#...#.",
         ".#.......#.",
         ".#########."],
+    "gear": [
+        "...#####...",
+        "..##...##..",
+        ".##..#..##.",
+        "##...#...##",
+        "##.#####.##",
+        "##.#####.##",
+        "##.#####.##",
+        "##...#...##",
+        ".##..#..##.",
+        "..##...##..",
+        "...#####..."],
+    "info": [
+        "...#####...",
+        "..#######..",
+        ".#########.",
+        "###########",
+        "####.######",
+        "#####.#####",
+        "####...####",
+        "####...####",
+        "####...####",
+        "###########",
+        ".#########."],
+    "warning": [
+        ".....#.....",
+        "....###....",
+        "....###....",
+        "...#####...",
+        "...#####...",
+        "..#######..",
+        "..###.###..",
+        ".#########.",
+        ".#########.",
+        "###########",
+        "....###...."],
+    "help": [
+        "...#####...",
+        "..#######..",
+        ".#########.",
+        "###########",
+        "#####.#####",
+        "####..#####",
+        "####.######",
+        "#####.#####",
+        "###########",
+        ".#########.",
+        "...#####..."],
+    "plus": [
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        "###########",
+        "###########",
+        "###########",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#.....",
+        ".....#....."],
+    "link": [
+        "...###.....",
+        "..#...#....",
+        ".#.....#...",
+        ".#....##...",
+        "..#..##....",
+        "...##..#...",
+        "...##...#..",
+        "....#....#.",
+        ".....#...#.",
+        "......###..",
+        "..........."],
+    "list": [
+        "###########",
+        "##..#######",
+        "###########",
+        "##..#######",
+        "###########",
+        "##..#######",
+        "###########",
+        "##..#######",
+        "###########",
+        "##..#######",
+        "###########"],
     "cube": [
         "GGGGGGGGGGG",
         "GGGGGGGGGGG",
@@ -106,29 +195,47 @@ GLYPHS = {
 
 _icon_cache = {}
 _grass_cache = {}
+_texture_cache = {}
+_button_cache = {}
+_button_src = {}
+_live_buttons = []
+
+TEXTURES = {
+    "grass": [
+        "GGGGGGGG", "GGgGGGGG", "GGGGGGGG", "GGGGGGGG",
+        "DDDDDDDD", "DDdDDDDD", "DDDDDDDD", "DDDdDDDD"],
+    "soil": [
+        "DDDDDDDD", "DDdDDDDD", "DDDDDDDD", "DDDdDDDD",
+        "DDDDDDDD", "DddDDDDD", "DDDDDDDD", "DDDDdDDD"],
+    "stone": [
+        "SSSSSSSS", "SSsSSSSS", "SSSSSSSS", "SSSSsSSS",
+        "SSSSSSSS", "SsSSSSSS", "SSSSSSSS", "SSSSSSsS"],
+    "wood": [
+        "WWWWWWWW", "WwWWWWWW", "WWWWWWWW", "WWWWwWWW",
+        "WWWWWWWW", "WwWWWWWW", "WWWWWWWW", "WWWWWWwW"],
+    "leaves": [
+        "GGGGGGGG", "GGgGGGGG", "GGGGGGGG", "GGGGgGGG",
+        "GGGGGGGG", "GgGGGGGG", "GGGGGGGG", "GGGGGGgG"],
+}
 
 
 def get_icon(name, fg="#3B2F1E", scale=2):
-    """Pixel icon vẽ lúc chạy bằng PIL, phóng NEAREST. Hỏng PIL → None."""
+    """Load a transparent pixel-art PNG sprite and scale it with nearest-neighbor."""
     try:
         key = (name, fg, scale)
         if key in _icon_cache:
             return _icon_cache[key]
-        from PIL import Image, ImageTk
-        rows = GLYPHS[name]
-        h, w = len(rows), len(rows[0])
-        pal = {"G": (94, 187, 43), "D": (107, 68, 35), "d": (70, 44, 22)}
-        fr, fgg, fb = int(fg[1:3], 16), int(fg[3:5], 16), int(fg[5:7], 16)
-        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        px = img.load()
-        for y, row in enumerate(rows):
-            for x, ch in enumerate(row):
-                if ch == "#":
-                    px[x, y] = (fr, fgg, fb, 255)
-                elif ch in pal:
-                    px[x, y] = pal[ch] + (255,)
-        img = img.resize((w * scale, h * scale), Image.NEAREST)
-        tkimg = ImageTk.PhotoImage(img)
+        image = Image.open(UI_ASSET_DIR / "icons" / f"{name}.png").convert("RGBA")
+        if fg.lower() != "#3b2f1e":
+            source = image.load()
+            rgb = tuple(int(fg[index:index + 2], 16) for index in (1, 3, 5))
+            for y in range(image.height):
+                for x in range(image.width):
+                    red, green, blue, alpha = source[x, y]
+                    if alpha and red < 100 and green < 100 and blue < 100:
+                        source[x, y] = (*rgb, alpha)
+        image = image.resize((image.width * scale, image.height * scale), Image.Resampling.NEAREST)
+        tkimg = ImageTk.PhotoImage(image)
         _icon_cache[key] = tkimg
         return tkimg
     except Exception:
@@ -136,7 +243,7 @@ def get_icon(name, fg="#3B2F1E", scale=2):
 
 
 def get_grass(w=800, h=18):
-    """Dải cỏ-đất nhiễu pixel cho footer. Hỏng PIL → None."""
+    """Dải cỏ-đất pixel cho footer. Hỏng PIL → None."""
     try:
         if "bar" in _grass_cache:
             return _grass_cache["bar"]
@@ -146,15 +253,30 @@ def get_grass(w=800, h=18):
         img = Image.new("RGB", (w, h), (107, 68, 35))
         px = img.load()
         for x in range(w):
-            edge = 5 + ((x * 7) % 3)
+            edge = 5 + ((x // 4 * 7) % 3)
             for y in range(h):
                 if y < edge:
-                    px[x, y] = greens[(x * 3 + y * 5) % 4]
+                    px[x, y] = greens[((x // 4) * 3 + (y // 2) * 5) % 4]
                 else:
-                    px[x, y] = browns[(x * 5 + y * 3) % 4]
+                    px[x, y] = browns[((x // 4) * 5 + (y // 2) * 3) % 4]
         tkimg = ImageTk.PhotoImage(img)
         _grass_cache["bar"] = tkimg
         return tkimg
+    except Exception:
+        return None
+
+
+def get_texture(name, scale=3):
+    """Load and cache a repeating PNG tile used for pixel-art surfaces."""
+    try:
+        key = (name, scale)
+        if key in _texture_cache:
+            return _texture_cache[key]
+        image = Image.open(UI_ASSET_DIR / "textures" / f"{name}.png").convert("RGBA")
+        image = image.resize((image.width * scale, image.height * scale), Image.Resampling.NEAREST)
+        texture = ImageTk.PhotoImage(image)
+        _texture_cache[key] = texture
+        return texture
     except Exception:
         return None
 
@@ -189,28 +311,125 @@ def win_icon(kind, fg="#3B2F1E", bg="#F7D774", size=22):
         return None
 
 
-def pixel_button(parent, text, bg, fg, command, ghost=False, icon=None):
-    """Nút pixel: viền đậm + mép sáng trên + mặt phẳng, không đổi màu hover.
+def _button_skin(state, width, height):
+    try:
+        key = (state, width, height)
+        if key not in _button_cache:
+            if state not in _button_src:
+                source = Image.open(
+                    UI_ASSET_DIR / "buttons" / f"{state}.png").convert("RGBA")
+                _button_src[state] = source.resize((48, 24), Image.Resampling.NEAREST)
+            source = _button_src[state]
+            inset = 2
+            corner = inset * 2
+            center_width = max(1, width - corner * 2)
+            center_height = max(1, height - corner * 2)
+            image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
-    Trả về khung ngoài; nút thật nằm ở ``outer.inner``.
-    """
-    light = {"#B91C1C": "#E88A7D", "#2FA84F": "#8FD6A4"}.get(bg, "#FFE08A")
-    dark = {"#B91C1C": "#7F1D1D", "#2FA84F": "#1E6F35"}.get(bg, "#8A6D1F")
-    outer = tk.Frame(parent, bg=dark, padx=2, pady=2, bd=0, highlightthickness=0)
-    top = tk.Frame(outer, bg=light, bd=0, highlightthickness=0)
-    top.pack(fill="both", expand=True)
-    b = tk.Button(top, text=text, image=icon, compound="left",
+            patches = (
+                (source.crop((0, 0, inset, inset)), (0, 0, corner, corner)),
+                (source.crop((source.width-inset, 0, source.width, inset)),
+                 (width-corner, 0, width, corner)),
+                (source.crop((0, source.height-inset, inset, source.height)),
+                 (0, height-corner, corner, height)),
+                (source.crop((source.width-inset, source.height-inset,
+                              source.width, source.height)),
+                 (width-corner, height-corner, width, height)),
+                (source.crop((inset, 0, source.width-inset, inset)),
+                 (corner, 0, width-corner, corner)),
+                (source.crop((inset, source.height-inset,
+                              source.width-inset, source.height)),
+                 (corner, height-corner, width-corner, height)),
+                (source.crop((0, inset, inset, source.height-inset)),
+                 (0, corner, corner, height-corner)),
+                (source.crop((source.width-inset, inset, source.width,
+                              source.height-inset)),
+                 (width-corner, corner, width, height-corner)),
+                (source.crop((inset, inset, source.width-inset,
+                              source.height-inset)),
+                 (corner, corner, width-corner, height-corner)),
+            )
+            for patch, bounds in patches:
+                x0, y0, x1, y1 = bounds
+                if x1 > x0 and y1 > y0:
+                    patch = patch.resize((x1-x0, y1-y0), Image.Resampling.NEAREST)
+                    image.alpha_composite(patch, (x0, y0))
+            _button_cache[key] = ImageTk.PhotoImage(image)
+        return _button_cache[key]
+    except Exception:
+        return None
+
+
+def pixel_button(parent, text, bg, fg, command, ghost=False, icon=None):
+    """Pixel button with a nine-slice PNG frame and a live Tk button center."""
+    outer = tk.Canvas(parent, width=144, height=48, bg=bg,
+                      bd=0, highlightthickness=0)
+    skin_item = outer.create_image(0, 0, anchor="nw")
+    button_host = tk.Frame(outer, bg=bg, bd=0, highlightthickness=0)
+    button_host.place(x=4, y=4, width=max(1, outer.winfo_width()-8),
+                      height=max(1, outer.winfo_height()-8))
+    b = tk.Button(button_host, text=text, image=icon, compound="left",
                   bg=bg, fg=fg, font=("Segoe UI", 10, "bold"),
                   bd=0, relief="flat", padx=8, pady=6, cursor="hand2",
                   activebackground=bg, activeforeground=fg,
+                  disabledforeground="#8A877D",
                   highlightthickness=0, takefocus=0, command=command)
-    b.pack(fill="both", expand=True, pady=(2, 0))
-    normal = bg
-    pressed = {"#B91C1C": "#991B1B", "#2FA84F": "#257A3E"}.get(bg, "#E8C34A")
-    b.bind("<ButtonPress-1>", lambda e, w=b, p=pressed: w.configure(bg=p))
-    b.bind("<ButtonRelease-1>", lambda e, w=b, n=normal: w.configure(bg=n))
+    b.pack(fill="both", expand=True)
+
+    skin_state = ["normal"]
+    last_size = [0, 0]
+    pending = [None]
+
+    def set_skin(state):
+        skin_state[0] = state
+        width, height = max(1, outer.winfo_width()), max(1, outer.winfo_height())
+        if (width, height) == (last_size[0], last_size[1]) \
+                and hasattr(outer, "_skin_image"):
+            return  # cùng kích thước → dùng skin đã vẽ, không ghép lại
+        last_size[0], last_size[1] = width, height
+        image = _button_skin(state, width, height)
+        if image is not None:
+            outer.itemconfigure(skin_item, image=image)
+            outer._skin_image = image
+        button_host.place(x=4, y=4, width=max(1, width-8),
+                  height=max(1, height-8))
+
+    def schedule_skin():
+        # Debounce: Windows bắn chùm <Configure> khi restore/minimize —
+        # chỉ vẽ lại một lần sau khi yên 60ms.
+        if pending[0] is not None:
+            try:
+                outer.after_cancel(pending[0])
+            except Exception:
+                pass
+        pending[0] = outer.after(60, lambda: set_skin(skin_state[0]))
+
+    b.bind("<Enter>", lambda e: set_skin("hover")
+           if str(b["state"]) != "disabled" else None)
+    b.bind("<Leave>", lambda e: set_skin(
+        "disabled" if str(b["state"]) == "disabled" else "normal"))
+    b.bind("<ButtonPress-1>", lambda e: set_skin("pressed")
+           if str(b["state"]) != "disabled" else None)
+    b.bind("<ButtonRelease-1>", lambda e: set_skin("hover")
+           if str(b["state"]) != "disabled" else None)
+
+    outer.bind("<Configure>", lambda e: schedule_skin())
+    set_skin("normal")
     outer.inner = b
+    outer.set_skin = set_skin
+    _live_buttons.append(outer)
     return outer
+
+
+def repaint_all_buttons():
+    """Vẽ lại toàn bộ pixel button (gọi khi cửa sổ hiện lại sau ẩn/minimize)."""
+    for btn in list(_live_buttons):
+        try:
+            if btn.winfo_exists():
+                btn.set_skin("normal" if str(btn.inner["state"]) != "disabled"
+                             else "disabled")
+        except Exception:
+            pass
 
 
 class SegmentBar(tk.Canvas):
@@ -279,6 +498,11 @@ def apply_style(root, title_bg, dark_ink):
                         darkcolor="#8A6D1F", arrowcolor="#3B2F1E", padding=3)
     except Exception:
         pass
+    s.configure("Vertical.TScrollbar", background="#8A6D1F",
+                troughcolor="#FFF6D9", bordercolor="#3B2F1E",
+                arrowcolor="#3B2F1E", relief="flat", width=16)
+    s.map("Vertical.TScrollbar",
+          background=[("active", "#F7D774"), ("pressed", "#2FA84F")])
     # đầu bảng phẳng (không nút 3D từng cột, không đổi màu khi hover)
     s.configure("Treeview.Heading", background="#F5D76E",
                 foreground="#3B2F1E", relief="flat", borderwidth=0,

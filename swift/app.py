@@ -30,6 +30,7 @@ class MacroApp:
         self.root.geometry(WINDOW_GEO)
         self.root.minsize(*WINDOW_MIN)
         self.root.resizable(True, True)
+        self.root.protocol("WM_DELETE_WINDOW", self._close_app)
         self.root.configure(bg=theme.THEME["bg"])
         try:
             self.logo_img = tk.PhotoImage(file=LOGO_PNG).subsample(3, 3)
@@ -55,57 +56,23 @@ class MacroApp:
 
     # ---------- build UI ----------
     def _build_ui(self):
-        # ---- custom titlebar: thay thanh Windows → chỉ còn 1 header ----
-        self.root.overrideredirect(True)
-        self._fix_taskbar()
-        titlebar = tk.Frame(self.root, bg=self.BAR_BG, padx=8, pady=6,
-                            highlightthickness=0, bd=0)
-        titlebar.pack(fill="x")
-        if self.logo_img:
-            _lg = tk.Label(titlebar, image=self.logo_img, bg=self.BAR_BG, bd=0)
-            _lg.pack(side="left", padx=(0, 8))
-            _lg.bind("<ButtonPress-1>", self._drag_start)
-            _lg.bind("<B1-Motion>", self._drag_move)
-        self.title_label = tk.Label(titlebar, text="SwiftMacro 2.0", bg=self.BAR_BG,
-                                   fg=self.DARK_INK, font=("Courier New", 13, "bold"),
-                                   anchor="w", bd=0)
-        self.title_label.pack(side="left", fill="x", expand=True)
-        lamp_box = tk.Frame(titlebar, bg=self.BAR_BG)
-        lamp_box.pack(side="left", padx=(0, 6))
-        self.lamp = tk.Canvas(lamp_box, width=12, height=12, bg=self.BAR_BG,
+        # Use the native Windows titlebar so Alt+Tab, taskbar, minimize and close work.
+        # Khi hiện lại sau ẩn/minimize: ép update layout rồi vẽ lại skin
+        # ngay, tránh để vùng đen chờ chùm <Configure> debounce.
+        self.root.bind("<Map>", lambda e: self.root.after(30, self._remap))
+
+        statusbar = tk.Frame(self.root, bg=self.BAR_BG, padx=10, pady=5)
+        statusbar.pack(fill="x")
+        tk.Label(statusbar, text=f"{APP_NAME} {APP_VERSION}", bg=self.BAR_BG,
+                 fg=self.DARK_INK, font=("Courier New", 11, "bold")).pack(side="left")
+        self.lamp = tk.Canvas(statusbar, width=12, height=12, bg=self.BAR_BG,
                               highlightthickness=0, bd=0)
-        self.lamp.pack(side="left", padx=(0, 6))
+        self.lamp.pack(side="right", padx=(0, 6))
         self.lamp_dot = self.lamp.create_oval(1, 1, 11, 11,
                                               fill="#16A34A", outline="#16A34A")
-        self.state_word = tk.Label(lamp_box, text="Sẵn sàng", fg="#16A34A",
-                                   bg=self.BAR_BG, font=("Segoe UI", 10, "bold"), bd=0)
-        self.state_word.pack(side="left")
-        # pack side=right theo thứ tự này → hiển thị trái-sang: – ▢ ✕
-        for _kind, _fn in (("close", self._close_app), ("max", self._max_win),
-                           ("min", self._min_win)):
-            _wb = theme.pixel_button(
-                titlebar, "", "#F7D774", self.DARK_INK, _fn,
-                icon=theme.win_icon("close" if _kind == "close" else _kind,
-                                     "#3B2F1E"))
-            _wb.pack(side="right", padx=2)
-        titlebar.bind("<ButtonPress-1>", self._drag_start)
-        titlebar.bind("<B1-Motion>", self._drag_move)
-        self.title_label.bind("<ButtonPress-1>", self._drag_start)
-        self.title_label.bind("<B1-Motion>", self._drag_move)
-        lamp_box.bind("<ButtonPress-1>", self._drag_start)
-        lamp_box.bind("<B1-Motion>", self._drag_move)
-        self.root.bind("<Alt-F4>", lambda e: self._close_app())
-        self._zoomed = False
-        self._norm_geo = None
-        _grip = tk.Canvas(self.root, width=18, height=18, bg="#F2B632",
-                          highlightthickness=0, bd=0, cursor="size_nw_se")
-        for _i in range(3):
-            _o = 4 + _i * 4
-            _grip.create_line(_o, 17, 17, _o, fill="#3B2F1E", width=2)
-        _grip.place(relx=1.0, rely=1.0, anchor="se")
-        _grip.bind("<ButtonPress-1>", self._grip_start)
-        _grip.bind("<B1-Motion>", self._grip_move)
-        self.root.bind("<Map>", lambda e: self.root.after(30, self._repaint))
+        self.state_word = tk.Label(statusbar, text="Sẵn sàng", fg="#16A34A",
+                                   bg=self.BAR_BG, font=("Segoe UI", 9, "bold"), bd=0)
+        self.state_word.pack(side="right")
 
         # ---- toolbar pixel: 5 nút cùng cỡ, icon pixel + text ----
         bar = tk.Frame(self.root, bg=theme.THEME["bg"], padx=10, pady=10)
@@ -132,7 +99,7 @@ class MacroApp:
         self.btn_play.grid(row=0, column=3, sticky="nsew", padx=3)
         self.btn_settings = theme.pixel_button(
             bar, "Hotkeys  ▾", GOLD, GINK, self.toggle_hotkey_panel,
-            icon=theme.get_icon("sliders", "#3B2F1E"))
+            icon=theme.get_icon("gear", "#3B2F1E"))
         self.btn_settings.grid(row=0, column=4, sticky="nsew", padx=3)
 
         # ---- guide strip ----
@@ -148,9 +115,9 @@ class MacroApp:
         self.hint_full = tk.Label(
             hintbar, bg="#E4F3C2", fg="#2F4A12", justify="left", wraplength=560,
             font=("Segoe UI", 9),
-            text="1) Bấm Record (hoặc F9) → thao tác chuột/phím cần lặp.\n"
+            text="1) Bấm Record → thao tác chuột/phím cần lặp.\n"
                  "2) Bấm Record lần nữa để dừng → xem lại Steps, bấm Clear nếu ghi sai.\n"
-                 "3) Bấm Play (hoặc F10) để chạy lại; chỉnh vòng lặp trong Hotkeys ▾.")
+                 "3) Bấm Play để chạy lại; chỉnh vòng lặp trong Hotkeys ▾.")
         self._hint_open = False
 
         def _toggle_hint(e=None):
@@ -182,68 +149,34 @@ class MacroApp:
         self.macro_panel = MacroPanel(body, self.clear_events)
         self.macro_panel.pack(fill="both", expand=True)
 
-        # ---- grass strip footer (trang trí; trạng thái nằm ở thẻ Macro) ----
-        _grass = theme.get_grass()
-        if _grass is not None:
-            _gl = tk.Label(self.root, image=_grass, bd=0,
-                           highlightthickness=0)
-            _gl.image = _grass
-            _gl.pack(fill="x", side="bottom")
+        # ---- pixel grass/soil footer ----
+        self._build_pixel_footer()
         self._center_on_cursor_monitor()
         self._refresh()
 
-    # ---------- custom window chrome ----------
-    def _fix_taskbar(self):
-        try:
-            import ctypes
-            hwnd = ctypes.windll.user32.GetParent(self.root.winfo_id())
-            GWL_EXSTYLE = -20
-            WS_EX_APPWINDOW, WS_EX_TOOLWINDOW = 0x40000, 0x80
-            st = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-            ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE,
-                                                (st | WS_EX_APPWINDOW) & ~WS_EX_TOOLWINDOW)
-        except Exception:
-            pass
+    def _build_pixel_footer(self):
+        footer = tk.Canvas(self.root, height=18, bd=0, highlightthickness=0)
+        footer.pack(fill="x", side="bottom")
+        texture = theme.get_texture("grass", scale=2)
+        if texture is None:
+            footer.configure(bg=theme.THEME["ink"])
+            return
 
-    def _drag_start(self, e):
-        self._dx = e.x_root - self.root.winfo_x()
-        self._dy = e.y_root - self.root.winfo_y()
+        footer._texture = texture
 
-    def _drag_move(self, e):
-        self.root.geometry(f"+{e.x_root - self._dx}+{e.y_root - self._dy}")
+        def redraw(event):
+            footer.delete("texture")
+            width, height = event.width, event.height
+            tile_w, tile_h = texture.width(), texture.height()
+            for x in range(0, width, tile_w):
+                footer.create_image(x, 0, image=texture, anchor="nw", tags="texture")
+            if tile_h < height:
+                footer.create_rectangle(0, tile_h, width, height,
+                                        fill="#6B4423", outline="", tags="texture")
 
-    def _min_win(self):
-        try:
-            self.root.iconify()
-        except Exception:
-            pass
+        footer.bind("<Configure>", redraw)
 
-    def _monitor_workarea(self):
-        """Workarea (trừ taskbar) của monitor đang chứa cửa sổ. None nếu lỗi."""
-        try:
-            import ctypes
-            from ctypes import wintypes
-
-            class _RECT(ctypes.Structure):
-                _fields_ = [("left", wintypes.LONG), ("top", wintypes.LONG),
-                             ("right", wintypes.LONG), ("bottom", wintypes.LONG)]
-
-            class _MONITORINFO(ctypes.Structure):
-                _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", _RECT),
-                             ("rcWork", _RECT), ("dwFlags", wintypes.DWORD)]
-
-            user32 = ctypes.windll.user32
-            hwnd = user32.GetParent(self.root.winfo_id())
-            hmon = user32.MonitorFromWindow(hwnd, 2)  # MONITOR_DEFAULTTONEAREST
-            mi = _MONITORINFO()
-            mi.cbSize = ctypes.sizeof(_MONITORINFO)
-            if user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
-                r = mi.rcWork
-                return (r.left, r.top, r.right, r.bottom)
-        except Exception:
-            pass
-        return None
-
+    # ---------- window placement ----------
     def _center_on_cursor_monitor(self):
         """Mở app giữa monitor đang có chuột (không hard-code monitor chính)."""
         try:
@@ -275,40 +208,10 @@ class MacroApp:
         except Exception:
             pass
 
-    def _max_win(self):
-        try:
-            if not self._zoomed:
-                self._norm_geo = self.root.geometry()
-                area = self._monitor_workarea()
-                if area:
-                    l, t, r, b = area
-                    self.root.geometry(f"{r - l}x{b - t}+{l}+{t}")
-                else:
-                    self.root.geometry(f"{self.root.winfo_screenwidth()}x"
-                                        f"{self.root.winfo_screenheight()}+0+0")
-                self._zoomed = True
-            else:
-                if self._norm_geo:
-                    self.root.geometry(self._norm_geo)
-                self._zoomed = False
-            self.root.update_idletasks()
-            self.macro_panel.pbar.refresh()
-        except Exception:
-            pass
-
-    def _grip_start(self, e):
-        self._gx, self._gy = e.x_root, e.y_root
-        self._gw, self._gh = self.root.winfo_width(), self.root.winfo_height()
-
-    def _grip_move(self, e):
-        w = max(WINDOW_MIN[0], self._gw + e.x_root - self._gx)
-        h = max(WINDOW_MIN[1], self._gh + e.y_root - self._gy)
-        self.root.geometry(f"{w}x{h}")
-
     def _set_title_file(self, path):
         base = os.path.basename(path) if path else ""
-        self.title_label.config(
-            text=f"SwiftMacro 2.0  —  {base}" if base else "SwiftMacro 2.0")
+        title = f"{APP_NAME} {APP_VERSION}"
+        self.root.title(f"{title} — {base}" if base else title)
 
     def _close_app(self):
         if self.recorder.recording or self.recorder.playing or self.autoclicker.running:
@@ -325,7 +228,22 @@ class MacroApp:
         except Exception:
             pass
         try:
+            keyboard.unhook_all_hotkeys()
+        except Exception:
+            pass
+        try:
             self.root.destroy()
+        except Exception:
+            pass
+
+    def _remap(self):
+        """Cửa sổ vừa hiện lại (deiconify/map): ép vẽ lại ngay, khỏi chờ."""
+        try:
+            self.root.update_idletasks()
+            theme.repaint_all_buttons()
+            self.macro_panel.pbar.refresh()
+            self._refresh()
+            self.root.update_idletasks()
         except Exception:
             pass
 
@@ -394,6 +312,7 @@ class MacroApp:
         dur = self.recorder.events[-1]["t"] if self.recorder.events else 0.0
         self.macro_panel.detail_var.set(f"Events: {n}")
         self.macro_panel.dur_var.set(f"Duration: {dur:.1f}s")
+        self.macro_panel.set_record_hotkey(self.record_hotkey)
         self.macro_panel.set_hotkeys_hint(
             f"rec={self.record_hotkey} play={self.play_hotkey} "
             f"click={self.ac_hotkey}")
@@ -420,8 +339,10 @@ class MacroApp:
                 data = json.load(f)
             self.recorder.events = data.get("events", [])
             s = data.get("settings", {})
-            self.record_hotkey = s.get("record_hotkey", self.record_hotkey)
-            self.play_hotkey = s.get("play_hotkey", self.play_hotkey)
+            self.record_hotkey = str(s.get("record_hotkey",
+                                           self.record_hotkey)).strip().upper()
+            self.play_hotkey = str(s.get("play_hotkey",
+                                         self.play_hotkey)).strip().upper()
             self.continuous = s.get("continuous", self.continuous)
             self.loops = s.get("loops", self.loops)
             a = data.get("autoclick", {})
@@ -438,7 +359,8 @@ class MacroApp:
                 p.ac_pos.set(a.get("pos", p.ac_pos.get()))
                 p.ac_x.set(a.get("x", p.ac_x.get()))
                 p.ac_y.set(a.get("y", p.ac_y.get()))
-                self.ac_hotkey = a.get("hotkey", self.ac_hotkey)
+                self.ac_hotkey = str(a.get("hotkey",
+                                            self.ac_hotkey)).strip().upper()
                 p.set_click_hotkey(self.ac_hotkey)
             self.file_path = path
             self._set_title_file(path)
@@ -581,7 +503,8 @@ class MacroApp:
         self.ac_panel.set_hint("Chưa chạy")
         self.ac_panel.set_running(True)
         self._set_dot("click")
-        self.macro_panel.status_var.set("Auto Click đang chạy… bấm Stop hoặc F8 để dừng.")
+        self.macro_panel.status_var.set(
+            f"Auto Click đang chạy… bấm Stop hoặc {self.ac_hotkey} để dừng.")
         self.autoclicker.start(
             {"interval_ms": interval_ms(h, m, s, ms), "button": btn,
              "double": dbl, "target": target, "pos": pos},

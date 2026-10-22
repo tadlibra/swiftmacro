@@ -10,18 +10,23 @@ from . import theme
 
 
 def capture_key(root, var, btn):
-    """Bấm Capture rồi nhấn phím thật → điền vào ô (chạy thread riêng)."""
-    btn.config(text="Nhấn phím…", state="disabled")
+    """Bấm vào ô rồi nhấn phím thật → điền vào ô (chạy thread riêng)."""
+    if str(btn["state"]) == "disabled":
+        return
+    old = var.get()
+    var.set("Nhấn phím…")
+    btn.config(state="disabled")
 
     def _read():
         try:
             key = keyboard.read_key(suppress=False)
         except Exception as e:
             root.after(0, lambda: messagebox.showerror("Capture", str(e)))
-            root.after(0, lambda: btn.config(text="Capture", state="normal"))
+            root.after(0, lambda: (var.set(old),
+                                   btn.config(state="normal")))
             return
-        root.after(0, lambda: (var.set(key),
-                               btn.config(text="Capture", state="normal")))
+        root.after(0, lambda: (var.set(key.strip().upper()),
+                               btn.config(state="normal")))
 
     threading.Thread(target=_read, daemon=True).start()
 
@@ -31,6 +36,7 @@ class MacroPanel(ttk.Frame):
 
     def __init__(self, parent, on_clear):
         super().__init__(parent, padding=10, style="Card.TFrame")
+        self.record_hotkey = "F9"
         self.status_var = tk.StringVar(value="Ready. No macro loaded.")
         ttk.Label(self, textvariable=self.status_var, style="Card.TLabel",
                   font=("Segoe UI", 11, "bold"), wraplength=580,
@@ -54,7 +60,10 @@ class MacroPanel(ttk.Frame):
         list_head.pack(fill="x")
         ttk.Label(list_head, text="Steps đã ghi", style="Card.TLabel",
                   font=("Segoe UI", 10, "bold")).pack(side="left")
-        ttk.Button(list_head, text="Clear", command=on_clear).pack(side="right")
+        clear_btn = theme.pixel_button(
+            list_head, "Clear", "#F7D774", "#3B2F1E", on_clear,
+            icon=theme.get_icon("trash", "#3B2F1E", scale=1))
+        clear_btn.pack(side="right")
 
         cols = ("time", "kind", "detail")
         self.tree = ttk.Treeview(self, columns=cols, show="headings", height=11)
@@ -72,7 +81,8 @@ class MacroPanel(ttk.Frame):
             self.tree.delete(*self.tree.get_children())
             if not events:
                 self.tree.insert("", "end", values=("—", "trống",
-                    "Chưa có bước nào — bấm Record (F9) để bắt đầu ghi."))
+                    f"Chưa có bước nào — bấm Record ({self.record_hotkey}) "
+                    "để bắt đầu ghi."))
                 return
             for e in events[-200:]:
                 k = e.get("kind", "")
@@ -89,6 +99,9 @@ class MacroPanel(ttk.Frame):
                 self.tree.insert("", "end", values=(f"{e.get('t', 0):.2f}s", k, d))
         except Exception:
             pass
+
+    def set_record_hotkey(self, hotkey):
+        self.record_hotkey = hotkey.upper()
 
     def set_hotkeys_hint(self, text):
         self.hot_var.set(text)
@@ -191,25 +204,26 @@ class HotkeyPanel(ttk.Frame):
         ttk.Label(self, text="Phím tắt", style="Card.TLabel",
                   font=("Segoe UI", 11, "bold")).grid(row=0, column=0, sticky="w")
         ttk.Label(self,
-                  text="Gõ trực tiếp (vd F9, F10) hoặc bấm Capture rồi nhấn phím. "
+                  text="Bấm vào ô rồi nhấn phím thật. "
                        "Kết hợp được: ctrl+shift+r, alt+f9. Các phím phải khác nhau.",
                   style="Muted.TLabel", wraplength=580,
                   justify="left").grid(row=1, column=0, columnspan=4, sticky="w",
                                         pady=(2, 8))
         self.vars = {}
+        self.cap_btns = {}
         for i, (label, key) in enumerate((("Record:", "rec"), ("Play:", "play"),
                                           ("Click:", "click"))):
             ttk.Label(self, text=label, style="Card.TLabel").grid(
                 row=2 + i, column=0, sticky="e", pady=6)
             var = tk.StringVar(value="")
             self.vars[key] = var
-            ttk.Entry(self, textvariable=var, width=18).grid(
-                row=2 + i, column=1, sticky="w", padx=6, pady=6)
-            cap = theme.pixel_button(self, "Capture", "#F7D774", "#3B2F1E",
+            cap = theme.pixel_button(self, "", "#FFFFFF", "#3B2F1E",
                                      lambda: None)
-            cap.grid(row=2 + i, column=2, padx=4, pady=6)
+            cap.grid(row=2 + i, column=1, sticky="w", padx=6, pady=6)
             cap.inner.configure(
+                textvariable=var,
                 command=lambda v=var, b=cap.inner: capture_key(self._root, v, b))
+            self.cap_btns[key] = cap.inner
 
         from tkinter import BooleanVar, IntVar
         self.cont_var = BooleanVar(value=False)
@@ -223,18 +237,26 @@ class HotkeyPanel(ttk.Frame):
         ttk.Spinbox(hf, from_=1, to=9999, width=8,
                     textvariable=self.loops_var).pack(side="left", padx=6)
         self.btn_reset_hk = theme.pixel_button(hf, "Reset F9/F10", "#F7D774",
-                                                     "#3B2F1E", on_reset)
+                                               "#3B2F1E", on_reset,
+                                               icon=theme.get_icon("gear", "#3B2F1E",
+                                                                   scale=1))
         self.btn_reset_hk.pack(side="right", padx=4)
         self.btn_save_hk = theme.pixel_button(hf, "Lưu", "#2FA84F", "#FFFFFF",
                                               on_save)
         self.btn_save_hk.pack(side="right", padx=4)
 
     def load(self, rec, play, click, cont, loops):
-        self.vars["rec"].set(rec)
-        self.vars["play"].set(play)
-        self.vars["click"].set(click)
+        self.vars["rec"].set(str(rec).strip().upper())
+        self.vars["play"].set(str(play).strip().upper())
+        self.vars["click"].set(str(click).strip().upper())
         self.cont_var.set(cont)
         self.loops_var.set(loops)
+        try:
+            self.btn_reset_hk.inner.configure(
+                text=f"Reset {rec.strip().upper()}/"
+                     f"{play.strip().upper()}")
+        except Exception:
+            pass
 
     def reset_defaults(self, rec="F9", play="F10", click="F8"):
         self.vars["rec"].set(rec)
@@ -245,9 +267,9 @@ class HotkeyPanel(ttk.Frame):
 
     def collect(self):
         """→ (rec, play, click, cont, loops). Raise ValueError nếu thiếu/trùng."""
-        rh = self.vars["rec"].get().strip()
-        ph = self.vars["play"].get().strip()
-        ch = self.vars["click"].get().strip()
+        rh = self.vars["rec"].get().strip().upper()
+        ph = self.vars["play"].get().strip().upper()
+        ch = self.vars["click"].get().strip().upper()
         if not rh or not ph or not ch:
             raise ValueError("Phím không được để trống.")
         if len({rh.lower(), ph.lower(), ch.lower()}) < 3:
