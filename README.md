@@ -6,8 +6,8 @@
 
 Công cụ desktop cho Windows: **ghi macro chuột + phím và phát lại**, kèm **Auto Click** kiểu GS AutoClicker. Giao diện tiếng Việt, điều khiển chủ yếu bằng phím tắt toàn cục.
 
-[![CI](https://github.com/YOUR-GITHUB-USER/SwiftMacro/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-GITHUB-USER/SwiftMacro/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/YOUR-GITHUB-USER/SwiftMacro)](https://github.com/YOUR-GITHUB-USER/SwiftMacro/releases)
+[![CI](https://github.com/tadlibra/swiftmacro/actions/workflows/ci.yml/badge.svg)](https://github.com/tadlibra/swiftmacro/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tadlibra/swiftmacro)](https://github.com/tadlibra/swiftmacro/releases)
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-green)
 
@@ -36,7 +36,7 @@ Ghi và phát loại trừ lẫn nhau: đang ghi thì không phát được và 
 Yêu cầu: **Windows** + **Python 3.10 trở lên**.
 
 ```bat
-git clone https://github.com/YOUR-GITHUB-USER/SwiftMacro.git
+git clone https://github.com/tadlibra/swiftmacro.git
 cd SwiftMacro
 pip install -r requirements.txt
 python swiftmacro.py
@@ -44,7 +44,7 @@ python swiftmacro.py
 
 ## Tải bản dựng sẵn (khuyến nghị cho người dùng cuối)
 
-Vào trang [Releases](https://github.com/YOUR-GITHUB-USER/SwiftMacro/releases), tải file `SwiftMacro-<phiên bản>-win64.exe` và chạy — không cần cài Python.
+Vào trang [Releases](https://github.com/tadlibra/swiftmacro/releases), tải file `SwiftMacro-<phiên bản>-win64.exe` và chạy — không cần cài Python.
 
 ## Tự build file EXE
 
