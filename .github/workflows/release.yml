@@ -22,7 +22,7 @@ jobs:
       - name: Build EXE
         run: pyinstaller SwiftMacro.spec
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SwiftMacro-win64
           path: dist/SwiftMacro/
