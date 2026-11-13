@@ -15,8 +15,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest
       - name: Compile check
         run: python -m compileall -q swift swiftmacro.py
       - name: Import smoke test
         run: python -c "import swift.config, swift.macro_engine, swift.auto_engine; print('OK', swift.config.APP_NAME, swift.config.APP_VERSION)"
+      - name: Unit tests
+        run: python -m pytest -q tests
